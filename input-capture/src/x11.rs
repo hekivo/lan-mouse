@@ -378,11 +378,14 @@ pub(crate) fn crossed_boundary(
 ) -> Option<Position> {
     if prev.0 > 0 && curr.0 <= 0 {
         Some(Position::Left)
-    } else if prev.0 < w - 1 && curr.0 >= w {
+    } else if prev.0 < w - 1 && curr.0 >= w - 1 {
+        // X11 clamps the cursor to [0, w-1], so >= w is never true.
+        // Treat arrival at the rightmost pixel as a right-edge crossing.
         Some(Position::Right)
     } else if prev.1 > 0 && curr.1 <= 0 {
         Some(Position::Top)
-    } else if prev.1 < h - 1 && curr.1 >= h {
+    } else if prev.1 < h - 1 && curr.1 >= h - 1 {
+        // Same reasoning for the bottom edge.
         Some(Position::Bottom)
     } else {
         None
@@ -416,7 +419,8 @@ mod tests {
 
     #[test]
     fn crosses_right_boundary() {
-        assert_eq!(crossed_boundary((1915, 100), (1920, 100), 1920, 1080), Some(Position::Right));
+        // X11 clamps to w-1; the cursor arrives at 1919, never at 1920.
+        assert_eq!(crossed_boundary((1915, 100), (1919, 100), 1920, 1080), Some(Position::Right));
     }
 
     #[test]
@@ -426,7 +430,8 @@ mod tests {
 
     #[test]
     fn crosses_bottom_boundary() {
-        assert_eq!(crossed_boundary((100, 1075), (100, 1080), 1920, 1080), Some(Position::Bottom));
+        // X11 clamps to h-1; the cursor arrives at 1079, never at 1080.
+        assert_eq!(crossed_boundary((100, 1075), (100, 1079), 1920, 1080), Some(Position::Bottom));
     }
 
     #[test]
@@ -440,7 +445,8 @@ mod tests {
     }
 
     #[test]
-    fn no_crossing_at_right_pixel() {
+    fn no_crossing_already_at_right_edge() {
+        // Cursor already at w-1: no prev→curr transition, must not re-trigger.
         assert_eq!(crossed_boundary((1919, 100), (1919, 100), 1920, 1080), None);
     }
 
